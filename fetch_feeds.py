@@ -6,8 +6,11 @@ import json
 import os
 import hashlib
 import feedparser
+import requests
 
 from config import BANKS, GENERAL_MA_FEEDS, bank_feed_url, STATE_FILE
+
+FEED_TIMEOUT_SECONDS = 15
 
 
 def _article_id(entry) -> str:
@@ -39,7 +42,13 @@ def fetch_new_articles() -> list[dict]:
 
     for url in all_feed_urls:
         try:
-            parsed = feedparser.parse(url)
+            resp = requests.get(
+                url,
+                timeout=FEED_TIMEOUT_SECONDS,
+                headers={"User-Agent": "Mozilla/5.0 (news-bot RSS reader)"},
+            )
+            resp.raise_for_status()
+            parsed = feedparser.parse(resp.content)
         except Exception as e:
             print(f"[warn] failed to fetch {url}: {e}")
             continue
