@@ -28,7 +28,7 @@ jobs:
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
           PUSHOVER_MA_TOKEN: ${{ secrets.PUSHOVER_MA_TOKEN }}
           PUSHOVER_INDUSTRIALS_TOKEN: ${{ secrets.PUSHOVER_INDUSTRIALS_TOKEN }}
-        run: python main.py
+        run: python -u main.py
 
       - name: Commit updated state file
         run: |
