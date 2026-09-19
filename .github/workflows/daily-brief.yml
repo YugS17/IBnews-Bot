@@ -1,0 +1,43 @@
+name: daily-brief
+
+on:
+  schedule:
+    # 11:00 UTC = 7:00 AM ET (standard time) / 6:00 AM ET during daylight time.
+    # Cron doesn't auto-adjust for DST, so this will drift by an hour for
+    # about 8 months of the year - shift by 1 if you want it exact year-round.
+    - cron: "0 11 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send daily brief
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
+          PUSHOVER_MA_TOKEN: ${{ secrets.PUSHOVER_MA_TOKEN }}
+          PUSHOVER_INDUSTRIALS_TOKEN: ${{ secrets.PUSHOVER_INDUSTRIALS_TOKEN }}
+          PUSHOVER_ALERTS_TOKEN: ${{ secrets.PUSHOVER_ALERTS_TOKEN }}
+        run: python -u daily_brief.py
+
+      - name: Commit reset daily log
+        run: |
+          git config user.name "news-bot"
+          git config user.email "news-bot@users.noreply.github.com"
+          git add state/daily_log.json
+          git diff --staged --quiet || git commit -m "Reset daily log after morning brief"
+          git push
