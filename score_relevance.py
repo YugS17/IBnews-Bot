@@ -1,11 +1,13 @@
 """
 Scores each candidate article against your two Professional sub-channels
-using an LLM call, so we only push genuine matches - not just keyword hits.
+using an LLM call. ma_deal/bank_news are also gated by a deterministic,
+code-level check that the tracked bank's name actually appears in the
+article - the AI cannot force a false positive through on these two fields.
 """
 import json
 import requests
 
-from config import ANTHROPIC_API_KEY, BANKS
+from config import ANTHROPIC_API_KEY, BANKS, bank_search_terms
 
 SYSTEM_PROMPT = f"""You are a filter for a personal news alert bot. The user is an MBA
 student targeting Industrials-coverage investment banking. He only wants to be pushed
@@ -46,6 +48,18 @@ Respond with ONLY a JSON array, one object per article, in the same order given,
 No markdown, no preamble."""
 
 
+def _mentions_tracked_bank(article: dict) -> bool:
+    """Hard, code-level check that a tracked bank's name (or known alias)
+    literally appears in the article - overrides the AI's ma_deal/bank_news
+    back to false if it fires without a real name match."""
+    text = (article.get("title", "") + " " + article.get("summary", "")).lower()
+    for bank in BANKS:
+        for term in bank_search_terms(bank):
+            if term.lower() in text:
+                return True
+    return False
+
+
 def score_articles(articles: list[dict]) -> list[dict]:
     if not articles:
         return []
@@ -83,8 +97,9 @@ def score_articles(articles: list[dict]) -> list[dict]:
         results = json.loads(text)
 
         for a, r in zip(batch, results):
-            a["ma_deal"] = r.get("ma_deal", False)
-            a["bank_news"] = r.get("bank_news", False)
+            bank_mentioned = _mentions_tracked_bank(a)
+            a["ma_deal"] = r.get("ma_deal", False) and bank_mentioned
+            a["bank_news"] = r.get("bank_news", False) and bank_mentioned
             a["industrials"] = r.get("industrials", False)
             a["reason"] = r.get("reason", "")
             scored.append(a)
