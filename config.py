@@ -39,3 +39,5 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 STATE_FILE = "state/seen_articles.json"
 
 MAX_ARTICLE_AGE_DAYS = 365  # 1 year
+
+DAILY_LOG_FILE = "state/daily_log.json"  # every alert pushed today, reset after each morning brief
