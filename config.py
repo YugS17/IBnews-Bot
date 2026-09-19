@@ -16,6 +16,17 @@ GENERAL_MA_FEEDS = [
     "https://www.themiddlemarket.com/feed",
 ]
 
+# Dedicated Industrials-sector feeds, independent of which bank is involved.
+INDUSTRIALS_FEEDS = [
+    "https://www.industryweek.com/rss.xml",
+    "https://news.google.com/rss/search?q=industrials+M%26A+OR+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=aerospace+defense+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=manufacturing+company+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=industrial+distribution+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=building+products+company+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=industrials+IPO+OR+%22debt+offering%22+OR+%22bond+offering%22&hl=en-US&gl=US&ceid=US:en",
+]
+
 GOOGLE_NEWS_RSS_TEMPLATE = (
     "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
 )
@@ -39,6 +50,6 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 STATE_FILE = "state/seen_articles.json"
 DAILY_LOG_FILE = "state/daily_log.json"
 
-MAX_ARTICLE_AGE_DAYS = 365  # 1 year
+MAX_ARTICLE_AGE_DAYS = 365
 
-MAX_ARTICLES_PER_RUN = 150  # ~10 AI batches, roughly a minute or two per run
+MAX_ARTICLES_PER_RUN = 150
