@@ -1,8 +1,8 @@
 """
-Pulls every configured feed and returns a flat list of new articles
-(title, link, summary, source) that haven't been seen before.
-Feeds are fetched in parallel to avoid the multi-minute wall-clock time
-of fetching 18 feeds one at a time.
+Pulls every configured feed and returns a flat list of new articles that
+haven't been seen before. Feeds are fetched in parallel. Only articles
+actually selected for THIS run get marked as seen - overflow beyond the
+per-run cap carries over to future runs instead of being lost.
 """
 import json
 import os
@@ -14,14 +14,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import feedparser
 import requests
 
-from config import BANKS, GENERAL_MA_FEEDS, bank_feed_url, STATE_FILE, MAX_ARTICLE_AGE_DAYS
+from config import (
+    BANKS, GENERAL_MA_FEEDS, bank_feed_url, STATE_FILE,
+    MAX_ARTICLE_AGE_DAYS, MAX_ARTICLES_PER_RUN,
+)
 
 FEED_TIMEOUT_SECONDS = 10
 MAX_WORKERS = 10
 
 
 def _entry_age_days(entry):
-    """Returns how many days old this entry is, or None if it has no usable date."""
     struct_time = entry.get("published_parsed") or entry.get("updated_parsed")
     if not struct_time:
         return None
@@ -31,22 +33,12 @@ def _entry_age_days(entry):
 
 
 def _article_id(entry) -> str:
-    """Dedup key based on the article's TITLE, not its link. Google News wraps
-    the same story in a different redirect URL depending on which search query
-    surfaced it, so link-based dedup would score/push the same deal multiple
-    times. We normalize the title (lowercase, strip punctuation, drop the
-    trailing ' - Publisher Name' Google News appends) so near-identical titles
-    from different queries collapse to the same key."""
     title = entry.get("title", "")
     if " - " in title:
-        title = title.rsplit(" - ", 1)[0]  # drop trailing " - Publisher"
+        title = title.rsplit(" - ", 1)[0]
     normalized = re.sub(r"[^a-z0-9]+", "", title.lower())
-    key = normalized or entry.get("link", "")  # fall back to link if title is empty
+    key = normalized or entry.get("link", "")
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
-
-
-def _article_id_unused():
-    pass
 
 
 def _load_seen() -> set:
@@ -64,7 +56,6 @@ def _save_seen(seen: set):
 
 
 def _fetch_one_feed(url: str):
-    """Runs in a worker thread. Returns parsed feed or None on any failure."""
     try:
         resp = requests.get(
             url,
@@ -82,7 +73,7 @@ def fetch_new_articles():
     """Returns (new_articles, is_first_run)."""
     seen = _load_seen()
     is_first_run = len(seen) == 0
-    new_articles = []
+    candidates = []
 
     all_feed_urls = list(GENERAL_MA_FEEDS)
     for bank in BANKS:
@@ -100,20 +91,44 @@ def fetch_new_articles():
                 aid = _article_id(entry)
                 if aid in seen:
                     continue
-                seen.add(aid)
 
                 age_days = _entry_age_days(entry)
                 if age_days is not None and age_days > MAX_ARTICLE_AGE_DAYS:
+                    seen.add(aid)
                     continue
 
-                new_articles.append({
+                candidates.append({
                     "id": aid,
                     "title": entry.get("title", ""),
                     "link": entry.get("link", ""),
                     "summary": entry.get("summary", ""),
                     "source": parsed.feed.get("title", future_to_url[future]),
+                    "age_days": age_days if age_days is not None else 0,
                 })
 
+    print(f"Done fetching. {len(candidates)} candidates within age window.")
+
+    deduped = {}
+    for c in candidates:
+        deduped.setdefault(c["id"], c)
+    candidates = list(deduped.values())
+
+    if is_first_run:
+        for c in candidates:
+            seen.add(c["id"])
+        _save_seen(seen)
+        return candidates, is_first_run
+
+    candidates.sort(key=lambda c: c["age_days"])
+    selected = candidates[:MAX_ARTICLES_PER_RUN]
+    overflow = len(candidates) - len(selected)
+
+    for c in selected:
+        seen.add(c["id"])
     _save_seen(seen)
-    print(f"Done fetching. {len(new_articles)} new articles within age window.")
-    return new_articles, is_first_run
+
+    if overflow > 0:
+        print(f"{overflow} additional candidates deferred to future runs "
+              f"(per-run cap is {MAX_ARTICLES_PER_RUN}, newest prioritized).")
+
+    return selected, is_first_run
