@@ -38,4 +38,4 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 STATE_FILE = "state/seen_articles.json"
 
-MAX_ARTICLE_AGE_DAYS = 120  # ~4 months
+MAX_ARTICLE_AGE_DAYS = 365  # 1 year
