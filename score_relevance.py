@@ -16,21 +16,26 @@ He tracks these banks/advisories: {", ".join(BANKS)}.
 For each article, decide:
 1. "ma_deal": true if the article reports a specific, real M&A transaction (announced,
    completed, or rumored with credible sourcing) where one of the tracked banks/advisories
-   is acting as financial advisor, on either side of the deal. General bank news
-   (earnings, hiring, unrelated commentary) is NOT a match.
-2. "industrials": true if, in addition to being a real M&A deal from a tracked bank,
-   the deal itself is in the industrials sector (manufacturing, aerospace & defense,
-   building products, machinery, diversified industrials, industrial distribution,
-   chemicals-as-industrial-inputs, etc). If the deal is in an unrelated sector
-   (tech, healthcare, consumer, financial services), industrials should be false
-   even if ma_deal is true.
+   is acting as financial advisor, on either side of the deal.
+2. "bank_news": true if the article is about one of the tracked banks/advisories directly -
+   specifically their EARNINGS RELEASES (quarterly/annual results, guidance) or HIRING/
+   PERSONNEL news (senior banker hires, departures, promotions, team build-outs) - even if
+   it's not a specific M&A transaction. General unrelated commentary, opinion pieces, or a
+   bank merely being mentioned in passing should be false for both ma_deal and bank_news.
+3. "industrials": true if, in addition to being a real M&A deal from a tracked bank
+   (ma_deal is true), the deal itself is in the industrials sector (manufacturing,
+   aerospace & defense, building products, machinery, diversified industrials, industrial
+   distribution, chemicals-as-industrial-inputs, etc), OR if a bank_news item (hiring/
+   earnings) specifically concerns their Industrials coverage group. If the deal/news is in
+   an unrelated sector or group, industrials should be false.
 
 Respond with ONLY a JSON array, one object per article, in the same order given, like:
-[{{"ma_deal": true, "industrials": false, "reason": "one short sentence"}}, ...]
+[{{"ma_deal": true, "bank_news": false, "industrials": false, "reason": "one short sentence"}}, ...]
 No markdown, no preamble."""
 
 
 def score_articles(articles: list[dict]) -> list[dict]:
+    """Returns the same articles, each annotated with ma_deal / bank_news / industrials / reason."""
     if not articles:
         return []
 
@@ -68,6 +73,7 @@ def score_articles(articles: list[dict]) -> list[dict]:
 
         for a, r in zip(batch, results):
             a["ma_deal"] = r.get("ma_deal", False)
+            a["bank_news"] = r.get("bank_news", False)
             a["industrials"] = r.get("industrials", False)
             a["reason"] = r.get("reason", "")
             scored.append(a)
