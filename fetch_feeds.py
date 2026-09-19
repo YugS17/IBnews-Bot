@@ -1,8 +1,7 @@
 """
 Pulls every configured feed and returns a flat list of new articles that
 haven't been seen before. Feeds are fetched in parallel. Only articles
-actually selected for THIS run get marked as seen - overflow beyond the
-per-run cap carries over to future runs instead of being lost.
+actually selected for THIS run get marked as seen - overflow carries over.
 """
 import json
 import os
@@ -15,7 +14,7 @@ import feedparser
 import requests
 
 from config import (
-    BANKS, GENERAL_MA_FEEDS, bank_feed_url, STATE_FILE,
+    BANKS, GENERAL_MA_FEEDS, INDUSTRIALS_FEEDS, bank_feed_url, STATE_FILE,
     MAX_ARTICLE_AGE_DAYS, MAX_ARTICLES_PER_RUN,
 )
 
@@ -70,12 +69,11 @@ def _fetch_one_feed(url: str):
 
 
 def fetch_new_articles():
-    """Returns (new_articles, is_first_run)."""
     seen = _load_seen()
     is_first_run = len(seen) == 0
     candidates = []
 
-    all_feed_urls = list(GENERAL_MA_FEEDS)
+    all_feed_urls = list(GENERAL_MA_FEEDS) + list(INDUSTRIALS_FEEDS)
     for bank in BANKS:
         all_feed_urls.append(bank_feed_url(bank))
 
