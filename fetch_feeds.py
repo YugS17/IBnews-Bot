@@ -6,6 +6,7 @@ of fetching 18 feeds one at a time.
 """
 import json
 import os
+import re
 import hashlib
 import calendar
 from datetime import datetime, timezone
@@ -30,8 +31,22 @@ def _entry_age_days(entry):
 
 
 def _article_id(entry) -> str:
-    key = entry.get("link") or entry.get("title", "")
+    """Dedup key based on the article's TITLE, not its link. Google News wraps
+    the same story in a different redirect URL depending on which search query
+    surfaced it, so link-based dedup would score/push the same deal multiple
+    times. We normalize the title (lowercase, strip punctuation, drop the
+    trailing ' - Publisher Name' Google News appends) so near-identical titles
+    from different queries collapse to the same key."""
+    title = entry.get("title", "")
+    if " - " in title:
+        title = title.rsplit(" - ", 1)[0]  # drop trailing " - Publisher"
+    normalized = re.sub(r"[^a-z0-9]+", "", title.lower())
+    key = normalized or entry.get("link", "")  # fall back to link if title is empty
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
+def _article_id_unused():
+    pass
 
 
 def _load_seen() -> set:
