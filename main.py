@@ -28,7 +28,7 @@ def run():
         if article["industrials"]:
             notify_industrials(article)
             industrials_count += 1
-        elif article["ma_deal"]:
+        elif article["ma_deal"] or article["bank_news"]:
             notify_ma_deal(article)
             ma_count += 1
 
