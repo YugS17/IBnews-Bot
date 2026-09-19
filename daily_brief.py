@@ -33,7 +33,7 @@ def _summarize(channel_label: str, entries: list[dict]) -> str:
         return "\n".join(f"- {e['title']} ({e['source']})" for e in entries[:15])
 
     items_text = "\n".join(
-        f"- {e['title']} ({e['source']}): {e.get('reason', '')}" for e in entries
+        f"- {e['title']} ({e['source']}): {e.get('summary_text', '')}" for e in entries
     )
     resp = requests.post(
         "https://api.anthropic.com/v1/messages",
