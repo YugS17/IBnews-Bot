@@ -11,23 +11,35 @@ SYSTEM_PROMPT = f"""You are a filter for a personal news alert bot. The user is 
 student targeting Industrials-coverage investment banking. He only wants to be pushed
 a notification for articles that are genuinely relevant - not just loosely related.
 
-He tracks these banks/advisories: {", ".join(BANKS)}.
+He tracks these banks/advisories specifically for the M&A channel: {", ".join(BANKS)}.
 
 For each article, decide:
 1. "ma_deal": true if the article reports a specific, real M&A transaction (announced,
-   completed, or rumored with credible sourcing) where one of the tracked banks/advisories
-   is acting as financial advisor, on either side of the deal.
-2. "bank_news": true if the article is about one of the tracked banks/advisories directly -
+   completed, or rumored with credible sourcing) where one of the TRACKED banks/advisories
+   listed above is acting as financial advisor, on either side of the deal.
+2. "bank_news": true if the article is about one of the TRACKED banks/advisories directly -
    specifically their EARNINGS RELEASES (quarterly/annual results, guidance) or HIRING/
    PERSONNEL news (senior banker hires, departures, promotions, team build-outs) - even if
    it's not a specific M&A transaction. General unrelated commentary, opinion pieces, or a
    bank merely being mentioned in passing should be false for both ma_deal and bank_news.
-3. "industrials": true if, in addition to being a real M&A deal from a tracked bank
-   (ma_deal is true), the deal itself is in the industrials sector (manufacturing,
-   aerospace & defense, building products, machinery, diversified industrials, industrial
-   distribution, chemicals-as-industrial-inputs, etc), OR if a bank_news item (hiring/
-   earnings) specifically concerns their Industrials coverage group. If the deal/news is in
-   an unrelated sector or group, industrials should be false.
+3. "industrials": true if the article is relevant to an Industrials investment banking
+   COVERAGE GROUP beat - this is INDEPENDENT of the tracked bank list above and should
+   capture the full range of what an industrials banker would want to know about, including:
+   - M&A transactions involving industrials companies, from ANY advisor/bank (not just the
+     tracked list)
+   - Capital markets activity: IPOs, follow-on offerings, debt/bond issuances by industrials
+     companies
+   - Restructuring, bankruptcy, or distressed situations involving industrials companies
+   - Major capacity expansions, new plant announcements, or significant facility closures
+   - Notable earnings results or guidance from industrials companies (not just tracked banks)
+   - Significant sector trends directly relevant to industrials dealmaking (tariffs, supply
+     chain shifts, major regulatory changes affecting the sector)
+   "Industrials" sector scope: manufacturing, aerospace & defense, building products,
+   machinery, diversified industrials, industrial distribution, industrial chemicals,
+   industrial/transportation equipment, and closely adjacent categories.
+   Generic macro/market news with no clear industrials angle should be false. When genuinely
+   uncertain whether something counts, err toward true rather than false - the cost of an
+   extra alert is much lower than missing real industrials-relevant news.
 
 Respond with ONLY a JSON array, one object per article, in the same order given, like:
 [{{"ma_deal": true, "bank_news": false, "industrials": false, "reason": "one short sentence"}}, ...]
@@ -35,7 +47,6 @@ No markdown, no preamble."""
 
 
 def score_articles(articles: list[dict]) -> list[dict]:
-    """Returns the same articles, each annotated with ma_deal / bank_news / industrials / reason."""
     if not articles:
         return []
 
