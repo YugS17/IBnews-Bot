@@ -4,11 +4,37 @@ Edit BANKS to add/remove firms. Everything else derives from this list.
 """
 
 BANKS = [
-    "Lazard", "Morgan Stanley", "Jefferies", "Bank of America", "BNP Paribas",
-    "Wells Fargo", "Moelis", "JPMorgan", "Goldman Sachs", "Barclays",
-    "Citigroup", "PJT Partners", "Evercore", "RBC Capital Markets",
+    "Lazard",
+    "Morgan Stanley",
+    "Jefferies",
+    "Bank of America",
+    "BNP Paribas",
+    "Wells Fargo",
+    "Moelis",
+    "JPMorgan",
+    "Goldman Sachs",
+    "Barclays",
+    "Citigroup",
+    "PJT Partners",
+    "Evercore",
+    "RBC Capital Markets",
     "Evolve Capital Partners",
 ]
+
+# Common alternate spellings/short forms, so the deterministic bank-mention
+# guard doesn't miss a real match just because a publisher used a variant.
+BANK_ALIASES = {
+    "JPMorgan": ["JPMorgan", "JP Morgan", "J.P. Morgan"],
+    "Bank of America": ["Bank of America", "BofA", "BAML"],
+    "Citigroup": ["Citigroup", "Citi", "Citibank"],
+    "Goldman Sachs": ["Goldman Sachs", "Goldman"],
+    "RBC Capital Markets": ["RBC Capital Markets", "RBC"],
+    "PJT Partners": ["PJT Partners", "PJT"],
+    "BNP Paribas": ["BNP Paribas", "BNP"],
+}
+
+def bank_search_terms(bank: str) -> list:
+    return BANK_ALIASES.get(bank, [bank])
 
 GENERAL_MA_FEEDS = [
     "https://www.prnewswire.com/rss/financial-services-latest-news/mergers-acquisitions-list.rss",
@@ -16,7 +42,6 @@ GENERAL_MA_FEEDS = [
     "https://www.themiddlemarket.com/feed",
 ]
 
-# Dedicated Industrials-sector feeds, independent of which bank is involved.
 INDUSTRIALS_FEEDS = [
     "https://www.industryweek.com/rss.xml",
     "https://news.google.com/rss/search?q=industrials+M%26A+OR+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
