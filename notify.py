@@ -40,7 +40,7 @@ def _log_for_daily_brief(channel: str, article: dict):
             "channel": channel,
             "title": article.get("title", ""),
             "source": article.get("source", ""),
-            "reason": article.get("reason", ""),
+            "summary_text": article.get("summary_text", ""),
             "link": article.get("link", ""),
         })
         with open(DAILY_LOG_FILE, "w") as f:
@@ -53,7 +53,7 @@ def notify_ma_deal(article: dict):
     _send(
         PUSHOVER_MA_TOKEN,
         title=f"M&A: {article['source']}",
-        message=f"{article['title']}\n\n{article.get('reason', '')}",
+        message=f"{article['title']}\n\n{article.get('summary_text', '')}",
         url=article["link"],
     )
     _log_for_daily_brief("ma", article)
@@ -63,7 +63,7 @@ def notify_industrials(article: dict):
     _send(
         PUSHOVER_INDUSTRIALS_TOKEN,
         title=f"Industrials Deal: {article['source']}",
-        message=f"{article['title']}\n\n{article.get('reason', '')}",
+        message=f"{article['title']}\n\n{article.get('summary_text', '')}",
         url=article["link"],
     )
     _log_for_daily_brief("industrials", article)
