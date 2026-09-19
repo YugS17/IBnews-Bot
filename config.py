@@ -37,7 +37,8 @@ PUSHOVER_ALERTS_TOKEN = os.environ.get("PUSHOVER_ALERTS_TOKEN", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 STATE_FILE = "state/seen_articles.json"
+DAILY_LOG_FILE = "state/daily_log.json"
 
 MAX_ARTICLE_AGE_DAYS = 365  # 1 year
 
-DAILY_LOG_FILE = "state/daily_log.json"  # every alert pushed today, reset after each morning brief
+MAX_ARTICLES_PER_RUN = 150  # ~10 AI batches, roughly a minute or two per run
