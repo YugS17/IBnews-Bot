@@ -1,14 +1,15 @@
 """
 Entry point. Run this on a schedule (see .github/workflows/news-bot.yml).
-Fetch -> score -> push. Nothing is pushed unless the AI scorer confirms
-a real match, so this stays high-precision rather than a keyword firehose.
+Any unhandled failure anywhere in this pipeline triggers a separate
+high-priority "system alert" push so a broken run surfaces immediately.
 """
+import traceback
 from fetch_feeds import fetch_new_articles
 from score_relevance import score_articles
-from notify import notify_ma_deal, notify_industrials
+from notify import notify_ma_deal, notify_industrials, notify_system_alert
 
 
-def main():
+def run():
     new_articles, is_first_run = fetch_new_articles()
     print(f"Fetched {len(new_articles)} new candidate articles.")
 
@@ -17,8 +18,7 @@ def main():
 
     if is_first_run:
         print(f"First run detected - recorded {len(new_articles)} existing articles "
-              f"as baseline without scoring/pushing them. Future runs will only "
-              f"alert on articles published after this point.")
+              f"as baseline without scoring/pushing them.")
         return
 
     scored = score_articles(new_articles)
@@ -34,6 +34,20 @@ def main():
 
     print(f"Pushed {ma_count} M&A alerts, {industrials_count} Industrials alerts. "
           f"Discarded {len(scored) - ma_count - industrials_count} near-misses.")
+
+
+def main():
+    try:
+        run()
+    except Exception as e:
+        error_summary = f"{type(e).__name__}: {e}"
+        print(f"[FATAL] {error_summary}")
+        traceback.print_exc()
+        notify_system_alert(
+            f"The news bot workflow failed with an error:\n\n{error_summary}\n\n"
+            f"Check the GitHub Actions logs for the full traceback."
+        )
+        raise
 
 
 if __name__ == "__main__":
