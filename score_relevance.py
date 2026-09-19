@@ -42,16 +42,24 @@ For each article, decide:
    Generic macro/market news with no clear industrials angle should be false. When genuinely
    uncertain whether something counts, err toward true rather than false - the cost of an
    extra alert is much lower than missing real industrials-relevant news.
+4. "summary": a 2-3 sentence factual summary of the article - NOT a justification for why it
+   matched, an actual substantive summary someone could act on. Specifically extract and
+   include, WHEN THE ARTICLE TEXT ACTUALLY STATES THEM:
+   - Which company is acquiring/being acquired (or the specific transaction type)
+   - Which bank(s)/advisor(s) are involved and on which side (buyer-side/seller-side)
+   - Deal value, multiple, or other financial terms if mentioned
+   Do NOT invent or guess at advisor names or dollar figures that are not in the text. If the
+   article genuinely does not state the advisor or deal value, say so plainly instead of
+   omitting it silently - e.g. "Advisor and deal value not disclosed in this article." This
+   is more useful to the user than a vague one-line justification like "this deal involves
+   an industrials company."
 
 Respond with ONLY a JSON array, one object per article, in the same order given, like:
-[{{"ma_deal": true, "bank_news": false, "industrials": false, "reason": "one short sentence"}}, ...]
+[{{"ma_deal": true, "bank_news": false, "industrials": false, "summary": "2-3 sentence factual summary with specifics or explicit note of what's missing"}}, ...]
 No markdown, no preamble."""
 
 
 def _mentions_tracked_bank(article: dict) -> bool:
-    """Hard, code-level check that a tracked bank's name (or known alias)
-    literally appears in the article - overrides the AI's ma_deal/bank_news
-    back to false if it fires without a real name match."""
     text = (article.get("title", "") + " " + article.get("summary", "")).lower()
     for bank in BANKS:
         for term in bank_search_terms(bank):
@@ -72,7 +80,7 @@ def score_articles(articles: list[dict]) -> list[dict]:
     for i in range(0, len(articles), batch_size):
         batch = articles[i:i + batch_size]
         user_content = "\n\n".join(
-            f"[{j}] TITLE: {a['title']}\nSUMMARY: {a['summary'][:400]}"
+            f"[{j}] TITLE: {a['title']}\nSUMMARY: {a['summary'][:800]}"
             for j, a in enumerate(batch)
         )
 
@@ -101,7 +109,7 @@ def score_articles(articles: list[dict]) -> list[dict]:
             a["ma_deal"] = r.get("ma_deal", False) and bank_mentioned
             a["bank_news"] = r.get("bank_news", False) and bank_mentioned
             a["industrials"] = r.get("industrials", False)
-            a["reason"] = r.get("reason", "")
+            a["summary_text"] = r.get("summary", "")
             scored.append(a)
 
     return scored
