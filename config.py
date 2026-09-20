@@ -21,8 +21,6 @@ BANKS = [
     "Evolve Capital Partners",
 ]
 
-# Common alternate spellings/short forms, so the deterministic bank-mention
-# guard doesn't miss a real match just because a publisher used a variant.
 BANK_ALIASES = {
     "JPMorgan": ["JPMorgan", "JP Morgan", "J.P. Morgan"],
     "Bank of America": ["Bank of America", "BofA", "BAML"],
@@ -36,14 +34,15 @@ BANK_ALIASES = {
 def bank_search_terms(bank: str) -> list:
     return BANK_ALIASES.get(bank, [bank])
 
+# BusinessWire and The Middle Market both actively block automated requests
+# from cloud/datacenter IPs (GitHub Actions runners included) - not
+# fixable via headers, so removed. PR Newswire still works fine.
 GENERAL_MA_FEEDS = [
     "https://www.prnewswire.com/rss/financial-services-latest-news/mergers-acquisitions-list.rss",
-    "https://www.businesswire.com/portal/site/home/news/subject/?vnsId=31382",
-    "https://www.themiddlemarket.com/feed",
 ]
 
+# Dedicated Industrials-sector feeds, independent of which bank is involved.
 INDUSTRIALS_FEEDS = [
-    "https://www.industryweek.com/rss.xml",
     "https://news.google.com/rss/search?q=industrials+M%26A+OR+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
     "https://news.google.com/rss/search?q=aerospace+defense+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
     "https://news.google.com/rss/search?q=manufacturing+company+acquisition+OR+merger&hl=en-US&gl=US&ceid=US:en",
