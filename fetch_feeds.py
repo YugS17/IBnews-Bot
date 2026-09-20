@@ -1,7 +1,10 @@
 """
 Pulls every configured feed and returns a flat list of new articles that
-haven't been seen before. Feeds are fetched in parallel. Only articles
-actually selected for THIS run get marked as seen - overflow carries over.
+haven't been seen before. Feeds are fetched in parallel. Near-duplicate
+stories from different publishers are collapsed into one candidate, so a
+single real event doesn't trigger a burst of near-identical notifications.
+Only articles actually selected for THIS run get marked as seen - overflow
+carries over to future runs.
 """
 import json
 import os
@@ -9,6 +12,7 @@ import re
 import hashlib
 import calendar
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import feedparser
 import requests
@@ -20,6 +24,7 @@ from config import (
 
 FEED_TIMEOUT_SECONDS = 10
 MAX_WORKERS = 10
+FUZZY_DUP_THRESHOLD = 0.6
 
 
 def _entry_age_days(entry):
@@ -38,6 +43,33 @@ def _article_id(entry) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "", title.lower())
     key = normalized or entry.get("link", "")
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
+def _normalize_for_similarity(title: str) -> str:
+    if " - " in title:
+        title = title.rsplit(" - ", 1)[0]
+    return re.sub(r"[^a-z0-9 ]+", "", title.lower()).strip()
+
+
+def _dedupe_near_duplicates(candidates: list) -> list:
+    """Collapses the same real-world story reported by different publishers
+    with slightly different headlines into a single candidate."""
+    representatives = []
+    norm_titles = []
+    for c in candidates:
+        norm = _normalize_for_similarity(c["title"])
+        matched_idx = None
+        for idx, existing_norm in enumerate(norm_titles):
+            if SequenceMatcher(None, norm, existing_norm).ratio() >= FUZZY_DUP_THRESHOLD:
+                matched_idx = idx
+                break
+        if matched_idx is None:
+            representatives.append(c)
+            norm_titles.append(norm)
+        else:
+            if len(c.get("summary", "")) > len(representatives[matched_idx].get("summary", "")):
+                representatives[matched_idx] = c
+    return representatives
 
 
 def _load_seen() -> set:
@@ -110,6 +142,12 @@ def fetch_new_articles():
     for c in candidates:
         deduped.setdefault(c["id"], c)
     candidates = list(deduped.values())
+
+    before_fuzzy = len(candidates)
+    candidates = _dedupe_near_duplicates(candidates)
+    if before_fuzzy != len(candidates):
+        print(f"Collapsed {before_fuzzy - len(candidates)} near-duplicate "
+              f"stories from different publishers into single candidates.")
 
     if is_first_run:
         for c in candidates:
