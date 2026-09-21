@@ -1,13 +1,10 @@
 """
 Standalone APITube API test. Verifies, with real calls:
 1. That authentication works
-2. What the rate-limit headers actually say (docs were inconsistent:
-   100/day vs 30/30min)
-3. Whether the 'title' param supports boolean OR grouping, by comparing a
-   single-bank query against a multi-bank OR query
-4. What a real response looks like, so we can build the real parser correctly
-
-Run this manually once via test-apitube.yml before touching the main pipeline.
+2. What the rate-limit headers actually say
+3. Whether the 'title' param supports boolean OR grouping
+4. Whether a proper industry/category taxonomy exists for more reliable filtering
+5. What a real response looks like
 """
 import os
 import sys
@@ -32,8 +29,6 @@ def call(label, params):
     rate_headers = {k: v for k, v in resp.headers.items() if "rate" in k.lower() or "limit" in k.lower()}
     if rate_headers:
         print(f"Rate limit headers: {rate_headers}")
-    else:
-        print("No rate-limit headers found in response.")
 
     if resp.status_code != 200:
         print(f"Response body: {resp.text[:500]}")
@@ -44,10 +39,14 @@ def call(label, params):
     print(f"Total results returned: {len(results)}")
     if results:
         first = results[0]
-        print(f"Sample article fields: {list(first.keys())}")
         print(f"Sample title: {first.get('title')}")
         print(f"Sample published_at: {first.get('published_at')}")
-        print(f"Sample href: {first.get('href')}")
+        if "industries" in first:
+            print(f"Sample industries field: {first.get('industries')}")
+        if "categories" in first:
+            print(f"Sample categories field: {first.get('categories')}")
+        if "entities" in first:
+            print(f"Sample entities field: {first.get('entities')}")
     return results
 
 
@@ -73,7 +72,35 @@ print("\n=== SUMMARY ===")
 print(f"Single-bank query: {len(single_results) if single_results is not None else 'FAILED'} results")
 print(f"'OR' word query: {len(or_results) if or_results is not None else 'FAILED'} results")
 print(f"Comma-separated query: {len(comma_results) if comma_results is not None else 'FAILED'} results")
-print("\nIf the OR or comma query returned articles for MULTIPLE different "
-      "banks (check titles above), that syntax works for real OR grouping. "
-      "If it only matched articles containing the literal words 'OR' or a "
-      "comma, we need a different approach (e.g. one request per bank).")
+
+print("\n\n########## ROUND 2 ##########")
+
+multiword_results = call("Multi-word non-phrase: acquisition merger", {
+    "title": "acquisition merger",
+    "published_at.start": "2026-09-17",
+    "per_page": 5,
+})
+
+industrials_category_results = call("Category filter attempt: industrials", {
+    "category.name": "industrials",
+    "published_at.start": "2026-09-17",
+    "per_page": 5,
+})
+
+aerospace_industry_results = call("Industry filter attempt: aerospace", {
+    "industry.name": "aerospace",
+    "published_at.start": "2026-09-17",
+    "per_page": 5,
+})
+
+entity_results = call("Entity filter attempt: Morgan Stanley as entity", {
+    "entity.name": "Morgan Stanley",
+    "published_at.start": "2026-09-17",
+    "per_page": 5,
+})
+
+print("\n=== ROUND 2 SUMMARY ===")
+print("Check above whether category.name / industry.name / entity.name "
+      "returned 200 with real results, or errored/returned 0. If any of "
+      "these work, we should use taxonomy filtering instead of pure text "
+      "search for the Industrials channel - much more reliable.")
