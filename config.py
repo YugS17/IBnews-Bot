@@ -74,6 +74,6 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 STATE_FILE = "state/seen_articles.json"
 DAILY_LOG_FILE = "state/daily_log.json"
 
-MAX_ARTICLE_AGE_DAYS = 365
+MAX_ARTICLE_AGE_DAYS = 3
 
 MAX_ARTICLES_PER_RUN = 150
